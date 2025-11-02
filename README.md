@@ -210,6 +210,83 @@ The -auto-approve flag automatically confirms the destroy action.
 
 The CI/CD workflow automates the process of building, scanning, and deploying.
 
+### 5.3.1. Prerequisites
+
+### Create S3 Bucket for Terraform Remote State
+
+Terraform stores infrastructure state remotely in **S3** to maintain consistency and allow team collaboration.  
+
+### Create S3 Bucket
+`aws s3 mb s3://<bucket-name> --region <region-name>`
+
+### Enable Versioning
+`aws s3api put-bucket-versioning --bucket <bucket-name> --versioning-configuration Status=Enabled`
+
+### Configure Terraform Backend
+Add the following in backend.tf file:
+
+terraform {
+  backend "s3" {
+    bucket         = "<bucket-name>"    # Create this S3 bucket in your account
+    key            = "<path to store terraform.tfstate>"
+    region         = "<region-name>"
+    encrypt        = true
+  }
+}
+
+### Configure OIDC for GitHub → AWS Authentication
+OpenID Connect (OIDC) allows GitHub Actions to securely assume an AWS IAM role without using static credentials or long-term access keys.
+
+### Create OIDC Provider
+
+`aws iam create-open-id-connect-provider --url https://token.actions.githubusercontent.com --client-id-list sts.amazonaws.com --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 `
+
+### Create Trust Policy (trust-policy.json)
+
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+    },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringLike": {
+        "token.actions.githubusercontent.com:sub": "repo:<GITHUB_USERNAME>/<REPO>:*"
+      },
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+      }
+    }
+  }]
+}
+
+### Create IAM Role for GitHub Actions
+
+`aws iam create-role --role-name github-oidc-deploy --assume-role-policy-document file://trust-policy.json`
+
+### Attach Permissions Policy (permissions-policy.json)
+
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "ecs:*", "ecr:*", "iam:*", "s3:*", "ec2:*",
+      "elasticloadbalancing:*", "logs:*", "cloudwatch:*", "sts:GetCallerIdentity"
+    ],
+    "Resource": "*"
+  }]
+}
+
+### Attach the permissions:
+
+`aws iam put-role-policy --role-name github-oidc-deploy --policy-name ecs-deployment-policy --policy-document file://permissions-policy.json`
+
+### 5.3.3. CI/CD Workflow Steps
+Once prerequisites are complete, GitHub Actions will automatically trigger on every code push to the main branch.
+
 **Workflow: `.github/workflows/build-scan-deploy.yml`**
 
 **Steps:**
@@ -219,10 +296,6 @@ The CI/CD workflow automates the process of building, scanning, and deploying.
 4. **Scan image** with **Trivy** for vulnerabilities.  
 5. **Push image** to Amazon ECR.  
 6. **Deploy** using Terraform to ECS.
-
-**OIDC Authentication:**
-- Configured via GitHub’s identity provider.
-- AWS IAM role (`<role-name>`) assumes permissions securely.
 
 ## 6. Working Diagram for the AWS ECS Deployment
 The following diagram represents the complete working architecture of the project — from code commit to user access.
