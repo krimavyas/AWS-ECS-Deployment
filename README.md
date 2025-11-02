@@ -182,12 +182,12 @@ After verifying your configuration and planning the infrastructure, you can depl
 `terraform apply (if you want manual confirmation for creating resources) or terraform apply -auto-approve`
 
 Explanation:
-terraform init → Downloads the required providers and initializes your working directory.
+```terraform init → Downloads the required providers and initializes your working directory.
 
 terraform plan → Shows what changes Terraform will make before applying.
 
 terraform apply -auto-approve → Creates all resources automatically without asking for manual confirmation.
-
+```
 # Accessing the Deployed Application
 
 Once the deployment completes successfully, Terraform will output an Application Load Balancer (ALB) DNS name.
@@ -205,9 +205,9 @@ Once testing is complete, clean up AWS resources to avoid unnecessary costs:
 `terraform destroy (if you want manual confirmation for destroying the resources) or terraform destroy -auto-approve`
 
 Explanation:
-terraform destroy → Removes all infrastructure defined in your Terraform code.
+```terraform destroy → Removes all infrastructure defined in your Terraform code.
 The -auto-approve flag automatically confirms the destroy action.
-
+```
 ### 5.3. CI/CD Pipeline (GitHub Actions)
 
 The CI/CD workflow automates the process of building, scanning, and deploying.
@@ -234,7 +234,7 @@ It showcases the flow of the CI/CD pipeline (via GitHub Actions) and how the dep
 ![alt text](images/AWS-ECS-Deployment-Workflow.png)
 
 Explanation:
-Developer pushes code → Triggers the GitHub Actions CI/CD pipeline.
+```Developer pushes code → Triggers the GitHub Actions CI/CD pipeline.
 GitHub Actions Workflow → Executes sequential steps:
 Build Docker Image from the app source (/app directory).
 Security Scan (Trivy) ensures container image compliance.
@@ -250,7 +250,7 @@ ALB in Public Subnet
 ECS in Private Subnet (via NAT Gateway)
 Security Groups (ALB → ECS)
 End User Access — The application is accessible via the ALB DNS name (e.g., http://<ALB-DNS-Name>).
-
+```
 ## 7. Linux Administration Tasks
 
 Detailed Linux scripting and troubleshooting documentation is available in [`scripts/LinuxTasks.md`] 
