@@ -1,16 +1,13 @@
 {
-  "name": "devops-task-01-11-2025",
+  "name": "hello-ecs",
   "version": "1.0.0",
-  "description": "",
+  "description": "Minimal Express app for ECS",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "license": "MIT",
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^4.19.2"
   }
 }

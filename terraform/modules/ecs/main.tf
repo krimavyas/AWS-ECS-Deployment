@@ -7,7 +7,7 @@ resource "aws_security_group" "task_sg" {
     to_port         = var.container_port
     protocol        = "tcp"
     security_groups = [var.alb_sg_id]
-    description     = "Allow ALB to ECS tasks"
+    description     = "Allow ALB to create ECS tasks"
   }
 
   egress {

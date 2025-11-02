@@ -28,7 +28,7 @@ variable "listener_port_http" {
 variable "enable_https" {
   description = "Whether to enable HTTPS listener"
   type        = bool
-  default     = true
+  default     = false
 }
 
 # Optional: Uncomment if you plan to use HTTPS (TLS)

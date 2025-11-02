@@ -1,0 +1,175 @@
+name: build-scan-deploy
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Select Terraform Action (apply or destroy)'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+env:
+  AWS_REGION: ap-south-1
+  APP_NAME: hello-ecs
+  IMAGE_TAG: v${{ github.run_number }}
+  ROLE_TO_ASSUME: arn:aws:iam::813600886350:role/github-oidc-deploy
+
+jobs:
+  build_scan_deploy:
+    name: Build, Scan, Push & Terraform ${{ github.event.inputs.action || 'apply' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # --- Checkout code ---
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- Configure AWS credentials using OIDC ---
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
+
+      # ===============================================================
+      # 🧱 STAGES BELOW RUN ONLY IF ACTION = APPLY
+      # ===============================================================
+
+      - name: Get ECR Repository URI
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        id: ecr
+        run: |
+          set -e
+          APP_NAME=${APP_NAME:-hello-ecs}
+          REGION="ap-south-1"
+
+          ECR_URL=$(aws ecr describe-repositories \
+            --repository-names "${APP_NAME}" \
+            --region "${REGION}" \
+            --query 'repositories[0].repositoryUri' \
+            --output text 2>/dev/null) || true
+
+          if [ -z "$ECR_URL" ] || [ "$ECR_URL" == "None" ]; then
+            echo "Repository not found, creating..."
+            ECR_URL=$(aws ecr create-repository \
+              --repository-name "${APP_NAME}" \
+              --region "${REGION}" \
+              --query 'repository.repositoryUri' \
+              --output text)
+          fi
+
+          echo "ECR_URL=$ECR_URL" >> $GITHUB_ENV
+          echo "Resolved ECR_URL: $ECR_URL"
+
+      - name: Login to Amazon ECR
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        run: docker build -t $ECR_URL:${IMAGE_TAG} ./app
+
+      - name: Run Trivy vulnerability scanner
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.ECR_URL }}:${{ env.IMAGE_TAG }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          format: table
+          exit-code: 0  
+
+      - name: Push image to ECR
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        run: docker push $ECR_URL:${IMAGE_TAG}
+
+      # ===============================================================
+      # 🏗️ TERRAFORM STAGES (COMMON FOR BOTH APPLY & DESTROY)
+      # ===============================================================
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
+
+      # --- Apply only network module first (apply mode only) ---
+      - name: Terraform Apply Network Module
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        working-directory: terraform
+        run: |
+          echo "🚀 Applying only the network module first..."
+          terraform apply -target=module.network -auto-approve
+
+      # --- Import existing ECR repo (apply mode only) ---
+      - name: Import existing ECR repo if needed
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        working-directory: terraform
+        run: |
+          set -e
+          echo "Checking if ECR repo ${APP_NAME} exists before Terraform plan..."
+          if aws ecr describe-repositories --repository-names "${APP_NAME}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+            echo "ECR repo exists, importing into Terraform state..."
+            terraform import -no-color module.ecr.aws_ecr_repository.this "${APP_NAME}" || true
+          else
+            echo "ECR repo not found, Terraform will create it."
+          fi
+
+      # --- Update image_tag in terraform.tfvars (apply mode only) ---
+      - name: Update image_tag in terraform.tfvars
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        working-directory: terraform
+        run: |
+          if grep -q '^image_tag' terraform.tfvars 2>/dev/null; then
+            sed -i "s/^image_tag\\s*=.*/image_tag = \"${IMAGE_TAG}\"/" terraform.tfvars
+          else
+            echo "image_tag = \"${IMAGE_TAG}\"" >> terraform.tfvars
+          fi
+          echo "terraform.tfvars contents:"
+          cat terraform.tfvars
+
+      # --- Terraform Plan (apply mode only) ---
+      - name: Terraform Plan
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        working-directory: terraform
+        run: terraform plan -out tf.plan -input=false
+
+      # ===============================================================
+      # 🚀 APPLY OR 🧨 DESTROY LOGIC
+      # ===============================================================
+
+      - name: Terraform Apply or Destroy
+        working-directory: terraform
+        run: |
+          if [ "${{ github.event.inputs.action || 'apply' }}" == "destroy" ]; then
+            echo "⚠️ Destroying all Terraform-managed resources..."
+            terraform destroy -auto-approve
+          else
+            echo "🚀 Applying infrastructure..."
+            terraform apply -auto-approve tf.plan
+          fi
+
+      # --- Output ALB URL (apply mode only) ---
+      - name: Show ALB URL
+        if: ${{ github.event.inputs.action != 'destroy' }}
+        working-directory: terraform
+        run: |
+          URL=$(terraform output -raw alb_dns_name || true)
+          echo "ALB URL: http://$URL"

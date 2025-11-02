@@ -35,7 +35,7 @@ module "alb" {
   public_subnet_ids      = module.network.public_subnet_ids
   health_check_path      = "/health"
   listener_port_http     = 80
-  enable_https           = true
+  enable_https       = false
 }
 
 module "ecs" {
