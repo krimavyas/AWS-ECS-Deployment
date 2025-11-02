@@ -35,7 +35,7 @@ Before starting, ensure the following tools are installed and configured:
 - **Security:** Secrets managed via AWS Secrets Manager, IAM least privilege roles, and non-root Docker users.
 
 ## 4. Project Structure
-
+```
 AWS-ECS-Deployment/
 ├── app/                              # Node.js Application Code
 │   ├── .dockerignore                 # Excludes unnecessary files from Docker build
@@ -77,7 +77,7 @@ AWS-ECS-Deployment/
 │
 ├── .gitignore                        # Ignore Terraform state, node_modules, etc.
 ├── README.md                         # Full documentation (overview, usage, CI/CD, Terraform, Docker, etc.)
-
+```
 ## 5. Step-by-Step Explanation
 
 ## 5.1. Application (`app/`) — Node.js + Docker
