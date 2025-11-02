@@ -80,7 +80,7 @@ AWS-ECS-Deployment/
 ```
 ## 5. Step-by-Step Explanation
 
-## 5.1. Application (`app/`) — Node.js + Docker
+### 5.1. Application (`app/`) — Node.js + Docker
 
 This directory contains the **Node.js web application** that serves as the core containerized service deployed on ECS.  
 It includes source code, dependencies, and the Dockerfile used for containerization.
@@ -105,12 +105,10 @@ See full Dockerfile: [`app/Dockerfile`](./app/Dockerfile)
 
 Follow these commands to build and test your container locally before pushing to Amazon ECR.
 
-#### Build the Docker image
-
-# From the directory where your Dockerfile is present.
+### Build the Docker image from the directory where your Dockerfile is present.
 `docker build -t <image-name>:latest .`
 
-# Run the container
+### Run the container
 `docker run -d -p 3000:3000 --name <container-name> <image-name>:latest`
 
 Explanation:
@@ -130,16 +128,16 @@ Once the container is running, open your browser and navigate to: `http://localh
 You should see the application response: Output – Application Running Successfully
 ![alt text](images/docker-container-running.png)
 
-# Verify running containers
+### Verify running containers
 `docker ps`
 This lists all active containers.
 You should see your hello-ecs-app container running and exposing port 3000.
 
-# Check logs
+### Check logs
 `docker logs <container-name>`
 This shows application logs (helpful for verifying health checks or requests).
 
-# Verify the running user inside the container
+### Verify the running user inside the container
 To ensure the container is running as a non-root user, execute:
 
 `docker exec -it <container-name> whoami`
@@ -161,7 +159,7 @@ Terraform automates AWS provisioning. It is organized into reusable **modules**:
 
 Each resource follows **least privilege** and **security best practices**.
 
-## 5.2.1. Prerequisites
+### 5.2.1. Prerequisites
 
 Before running Terraform, ensure the following:
 
@@ -169,16 +167,16 @@ AWS CLI is configured
 Terraform Installed
 IAM Permissions -> The user or role executing Terraform must have access to manage: VPC, Subnets, Gateways, ECS, ECR, ALB, IAM Roles and Policies
 
-## 5.2.2. Terraform Deployment Commands
+### 5.2.2. Terraform Deployment Commands
 After verifying your configuration and planning the infrastructure, you can deploy or destroy your AWS environment using the following commands:
 
-# Initialize Terraform (only required once per setup)
+### Initialize Terraform (only required once per setup)
 `terraform init`
 
-# Review changes before applying 
+### Review changes before applying 
 `terraform plan`
 
-# Deploy the infrastructure to AWS
+### Deploy the infrastructure to AWS
 `terraform apply (if you want manual confirmation for creating resources) or terraform apply -auto-approve`
 
 Explanation:
@@ -188,7 +186,7 @@ terraform plan → Shows what changes Terraform will make before applying.
 
 terraform apply -auto-approve → Creates all resources automatically without asking for manual confirmation.
 ```
-# Accessing the Deployed Application
+### Accessing the Deployed Application
 
 Once the deployment completes successfully, Terraform will output an Application Load Balancer (ALB) DNS name.
 
@@ -196,10 +194,10 @@ alb_dns_name = "http://<your-alb-endpoint>.elb.amazonaws.com"
 Visit that URL in your browser to verify deployment.
 You should see your Node.js “Hello World” application running.
 
-# Example output:
+### Example output:
 ![alt text](images/alb-dns-output.png)
 
-# 5.2.3. Destroy Infrastructure
+### 5.2.3. Destroy Infrastructure
 Once testing is complete, clean up AWS resources to avoid unnecessary costs:
 
 `terraform destroy (if you want manual confirmation for destroying the resources) or terraform destroy -auto-approve`
@@ -230,7 +228,7 @@ The CI/CD workflow automates the process of building, scanning, and deploying.
 The following diagram represents the complete working architecture of the project — from code commit to user access.
 It showcases the flow of the CI/CD pipeline (via GitHub Actions) and how the deployed application is served through AWS ECS and ALB.
 
-# Diagram: AWS ECS Deployment Workflow
+### Diagram: AWS ECS Deployment Workflow
 ![alt text](images/AWS-ECS-Deployment-Workflow.png)
 
 Explanation:
