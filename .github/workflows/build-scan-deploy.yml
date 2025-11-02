@@ -20,10 +20,10 @@ permissions:
   actions: read
 
 env:
-  AWS_REGION: ap-south-1
+  AWS_REGION: <region-name>
   APP_NAME: hello-ecs
   IMAGE_TAG: v${{ github.run_number }}
-  ROLE_TO_ASSUME: arn:aws:iam::813600886350:role/github-oidc-deploy
+  ROLE_TO_ASSUME: arn:aws:iam::<account-id>:role/<role-name>
 
 jobs:
   build_scan_deploy:
@@ -45,17 +45,14 @@ jobs:
       - name: Verify AWS Identity
         run: aws sts get-caller-identity
 
-      # ===============================================================
-      # 🧱 STAGES BELOW RUN ONLY IF ACTION = APPLY
-      # ===============================================================
-
+      # STAGES BELOW RUN ONLY IF ACTION = APPLY
       - name: Get ECR Repository URI
         if: ${{ github.event.inputs.action != 'destroy' }}
         id: ecr
         run: |
           set -e
           APP_NAME=${APP_NAME:-hello-ecs}
-          REGION="ap-south-1"
+          REGION="<region-name>"
 
           ECR_URL=$(aws ecr describe-repositories \
             --repository-names "${APP_NAME}" \
@@ -97,10 +94,7 @@ jobs:
         if: ${{ github.event.inputs.action != 'destroy' }}
         run: docker push $ECR_URL:${IMAGE_TAG}
 
-      # ===============================================================
-      # 🏗️ TERRAFORM STAGES (COMMON FOR BOTH APPLY & DESTROY)
-      # ===============================================================
-
+      # TERRAFORM STAGES
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -115,7 +109,7 @@ jobs:
         if: ${{ github.event.inputs.action != 'destroy' }}
         working-directory: terraform
         run: |
-          echo "🚀 Applying only the network module first..."
+          echo "Applying only the network module first..."
           terraform apply -target=module.network -auto-approve
 
       # --- Import existing ECR repo (apply mode only) ---
@@ -151,18 +145,15 @@ jobs:
         working-directory: terraform
         run: terraform plan -out tf.plan -input=false
 
-      # ===============================================================
-      # 🚀 APPLY OR 🧨 DESTROY LOGIC
-      # ===============================================================
-
+      # APPLY OR DESTROY LOGIC
       - name: Terraform Apply or Destroy
         working-directory: terraform
         run: |
           if [ "${{ github.event.inputs.action || 'apply' }}" == "destroy" ]; then
-            echo "⚠️ Destroying all Terraform-managed resources..."
+            echo "Destroying all Terraform-managed resources..."
             terraform destroy -auto-approve
           else
-            echo "🚀 Applying infrastructure..."
+            echo "Applying infrastructure..."
             terraform apply -auto-approve tf.plan
           fi
 
