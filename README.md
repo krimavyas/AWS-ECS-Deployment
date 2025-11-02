@@ -251,7 +251,7 @@ End User Access — The application is accessible via the ALB DNS name (e.g., ht
 ```
 ## 7. Linux Administration Tasks
 
-Detailed Linux scripting and troubleshooting documentation is available in [`scripts/LinuxTasks.md`] 
+Detailed Linux scripting and troubleshooting documentation is available in [`scripts/Linux Tasks.md`] 
 
 It includes:
 - Bash script for disk usage and log error analysis.
