@@ -224,7 +224,7 @@ Terraform stores infrastructure state remotely in **S3** to maintain consistency
 
 ### Configure Terraform Backend
 Add the following in backend.tf file:
-
+```
 terraform {
   backend "s3" {
     bucket         = "<bucket-name>"    # Create this S3 bucket in your account
@@ -233,7 +233,7 @@ terraform {
     encrypt        = true
   }
 }
-
+```
 ### Configure OIDC for GitHub → AWS Authentication
 OpenID Connect (OIDC) allows GitHub Actions to securely assume an AWS IAM role without using static credentials or long-term access keys.
 
@@ -242,7 +242,7 @@ OpenID Connect (OIDC) allows GitHub Actions to securely assume an AWS IAM role w
 `aws iam create-open-id-connect-provider --url https://token.actions.githubusercontent.com --client-id-list sts.amazonaws.com --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 `
 
 ### Create Trust Policy (trust-policy.json)
-
+```
 {
   "Version": "2012-10-17",
   "Statement": [{
@@ -261,13 +261,13 @@ OpenID Connect (OIDC) allows GitHub Actions to securely assume an AWS IAM role w
     }
   }]
 }
-
+```
 ### Create IAM Role for GitHub Actions
 
 `aws iam create-role --role-name github-oidc-deploy --assume-role-policy-document file://trust-policy.json`
 
 ### Attach Permissions Policy (permissions-policy.json)
-
+```
 {
   "Version": "2012-10-17",
   "Statement": [{
@@ -279,7 +279,7 @@ OpenID Connect (OIDC) allows GitHub Actions to securely assume an AWS IAM role w
     "Resource": "*"
   }]
 }
-
+```
 ### Attach the permissions:
 
 `aws iam put-role-policy --role-name github-oidc-deploy --policy-name ecs-deployment-policy --policy-document file://permissions-policy.json`
